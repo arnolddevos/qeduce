@@ -66,31 +66,34 @@ trait Qeduce {
     val sqlType = t
   }
 
-  trait Query[A] extends (Connection => A) {
-
-    def sql: SQL
-    val reducer: Reducer[ResultSet, A]
-
-    def apply(c: Connection): A = withStatement(c) { 
-      st =>
-        val rs = st.executeQuery
-        educe[ResultSet, ResultSet, A](rs, reducer)
+  implicit class SQLOps( val sql: SQL ) {
+    def withStatement[A](f: PreparedStatement => A): Connection => A = { 
+      c =>
+        val st = c.prepareStatement(sql.queryString)
+        try {
+          for((p, i) <- sql.params.zipWithIndex)
+            p.sqlType.inject(st, i+1, p.value)
+          f(st)
+        }
+        finally {
+          st.close
+        }
     }
 
-    def withStatement(c: Connection)(f: PreparedStatement => A): A = {
+    def query[A]( f: ResultSet => A ): Connection => A = 
+      withStatement(st => f(st.executeQuery))
 
-      val st = c.prepareStatement(sql.queryString)
-      try {
-        for((p, i) <- sql.params.zipWithIndex)
-          p.sqlType.inject(st, i+1, p.value)
-        f(st)
-      }
-      finally {
-        st.close
-      }
+    def update: Connection => Int = 
+      withStatement(_.executeUpdate)
+
+    def map[A]( f: ResultSet => A): Connection => Vector[A] = 
+      this :-/ transducers.map(f) ->: toVector
+
+    def :-/[A](f: Reducer[ResultSet, A]): Connection => Context[A] = query {
+      rs => rs :-/ f
     }
   }
-  
+
   implicit val resultSetIsEducible = new Educible[ResultSet, ResultSet] {
     def educe[S](rs: ResultSet, f: Reducer[ResultSet, S]): S = {
       var s = f.init
@@ -113,5 +116,4 @@ trait Qeduce {
       c.close
     }
   } 
-
 }
