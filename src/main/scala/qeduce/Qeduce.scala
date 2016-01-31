@@ -19,11 +19,6 @@ trait Qeduce {
         val params = d
       }
     }
-
-    def apply(items: SQL*) =
-      this ~ sql"(" ~ items.reduceOption( _ ~ sql"," ~ _).getOrElse(sql"") ~ sql")"
-
-    def queryString = parts.mkString("?")
     
     override def toString =
       parts.zip(params).map { case (s, p) => s+p }.mkString + parts.last
@@ -69,7 +64,7 @@ trait Qeduce {
   implicit class SQLOps( val sql: SQL ) {
     def withStatement[A](f: PreparedStatement => A): Connection => A = { 
       c =>
-        val st = c.prepareStatement(sql.queryString)
+        val st = c.prepareStatement(sql.parts.mkString("?"))
         try {
           for((p, i) <- sql.params.zipWithIndex)
             p.sqlType.inject(st, i+1, p.value)
