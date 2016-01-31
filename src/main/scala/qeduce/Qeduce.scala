@@ -1,6 +1,7 @@
 package qeduce
 
 import java.sql.{Connection, DriverManager, SQLException, ResultSet, PreparedStatement}
+import javax.sql.DataSource
 import transducers._
 
 trait Qeduce {
@@ -98,11 +99,16 @@ trait Qeduce {
     }
   }
 
-  def withConnection[A](uri: String)( action: Connection => A): A = {
-    val c = DriverManager.getConnection(uri)
-    c setAutoCommit false
+  def withConnection[A](uri: String)( f: Connection => A): A =
+    usingConnection(DriverManager.getConnection(uri))(f)
+
+  def withConnection[A](ds: DataSource)( f: Connection => A): A =
+    usingConnection(ds.getConnection)(f)
+
+  def usingConnection[A](c: Connection)( f: Connection => A): A = {
     try {
-      val a = action(c)
+      c setAutoCommit false
+      val a = f(c)
       c.commit
       a  
     }
