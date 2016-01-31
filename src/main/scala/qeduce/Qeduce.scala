@@ -71,16 +71,19 @@ trait Qeduce {
     def sql: SQL
     val reducer: Reducer[ResultSet, A]
 
-    def apply(c: Connection): A = {
+    def apply(c: Connection): A = withStatement(c) { 
+      st =>
+        val rs = st.executeQuery
+        educe[ResultSet, ResultSet, A](rs, reducer)
+    }
+
+    def withStatement(c: Connection)(f: PreparedStatement => A): A = {
 
       val st = c.prepareStatement(sql.queryString)
       try {
         for((p, i) <- sql.params.zipWithIndex)
           p.sqlType.inject(st, i+1, p.value)
-
-        val rs = st.executeQuery
-        educe[ResultSet, ResultSet, A](rs, reducer)
-
+        f(st)
       }
       finally {
         st.close
