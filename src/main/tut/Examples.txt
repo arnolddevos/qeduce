@@ -4,9 +4,32 @@ Assuming you have the qeduce library in your classpath:
 import qeduce._
 ```
 
-Now create some SQL like this:
 ```tut
-val name = "fred"
-val q = sql"select * from users where name = $name"
+val x = "fred"
 ```
 
+Now create some SQL like this:
+
+```tut:book
+val s = sql"select * from users where name = $x"
+```
+
+Add some result handling:
+
+```tut:book
+val e = s map {row => (row[Long]('ident), row get[Double] 'score) }
+```
+
+Now run it:
+
+```tut
+```
+
+We can define terms, if they are frequently used:
+
+```tut
+val ident = term[Long]('ident)
+val score = term[Double]('score)
+
+val e = s map {row => (ident(row), score(row))}
+```
