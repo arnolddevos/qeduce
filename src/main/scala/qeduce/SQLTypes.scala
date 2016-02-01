@@ -33,4 +33,21 @@ trait SQLTypes { this: Qeduce =>
     def inject = _.setString(_, _)
     def display = "\"" + _ + "\""
   }
+
+  implicit def sqlNullable[A]( implicit u: SQLType[A]): SQLType[Option[A]] = new SQLType[Option[A]] {
+    def extract = {
+      (rs, name) =>
+        val a = u.extract(rs, name)
+        if(rs.wasNull) None else Some(a)
+    }
+    def inject = {
+      (st, ix, as) =>
+        if(as.isDefined) u.inject(st, ix, as.get)
+        else st.setObject(ix, null)
+    }
+    def display =
+      as =>
+        if(as.isDefined) "Some(" + u.display(as.get) + ")"
+        else "None"
+  }
 }
