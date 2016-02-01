@@ -7,7 +7,7 @@ import transducers.{Transducer, Reducer, Educible, Context}
 trait Effects { this: Qeduce =>
 
   implicit class SQLOps( val sql: SQL ) {
-    def withStatement[A](f: PreparedStatement => A): Effect[A] = effect { 
+    private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect { 
       c =>
         val st = c.prepareStatement(sql.parts.mkString("?"))
         try {
@@ -22,24 +22,25 @@ trait Effects { this: Qeduce =>
 
     def update: Effect[Int] = withStatement(_.executeUpdate)
 
-    def map[A]( f: ResultSet => A): Effect[Vector[A]] = {
+    def map[A]( f: SQLRowView => A): Effect[Vector[A]] = {
       transduce(transducers.map(f))(transducers.toVector)
     }
 
-    def transduce[A, S](t: Transducer[A, ResultSet])( f: Reducer[A, S]): Effect[S] = withStatement {
+    def transduce[A, S](t: Transducer[A, SQLRowView])( f: Reducer[A, S]): Effect[S] = withStatement {
       st => transducers.transduce(st.executeQuery, t, f): Context[S]
     }
 
-    def reduce[S](f: Reducer[ResultSet, S]): Effect[S] = withStatement {
+    def reduce[S](f: Reducer[SQLRowView, S]): Effect[S] = withStatement {
       st => transducers.reduce(st.executeQuery, f): Context[S]
     }
   }
 
-  implicit val resultSetIsEducible = new Educible[ResultSet, ResultSet] {
-    def educe[S](rs: ResultSet, f: Reducer[ResultSet, S]): S = {
+  implicit val resultSetIsEducible = new Educible[ResultSet, SQLRowView] {
+    def educe[S](rs: ResultSet, f: Reducer[SQLRowView, S]): S = {
+      val rv = new SQLRowView(rs)
       var s = f.init
       while(rs.next && ! f.isReduced(s)) 
-        s = f(s, rs)
+        s = f(s, rv)
       f.complete(s)
     }
   }
