@@ -2,7 +2,7 @@ package qeduce
 
 import java.sql.{Connection, DriverManager, SQLException, ResultSet, PreparedStatement}
 import javax.sql.DataSource
-import transducers._
+import transducers.{Transducer, Reducer, Educible, Context}
 
 trait Qeduce {
 
@@ -63,7 +63,7 @@ trait Qeduce {
   }
 
   implicit class SQLOps( val sql: SQL ) {
-    def withStatement[A](f: PreparedStatement => A): Connection => A = { 
+    def withStatement[A](f: PreparedStatement => A): Effect[A] = effect { 
       c =>
         val st = c.prepareStatement(sql.parts.mkString("?"))
         try {
@@ -76,17 +76,18 @@ trait Qeduce {
         }
     }
 
-    def query[A]( f: ResultSet => A ): Connection => A = 
-      withStatement(st => f(st.executeQuery))
+    def update: Effect[Int] = withStatement(_.executeUpdate)
 
-    def update: Connection => Int = 
-      withStatement(_.executeUpdate)
+    def map[A]( f: ResultSet => A): Effect[Vector[A]] = {
+      transduce(transducers.map(f))(transducers.toVector)
+    }
 
-    def map[A]( f: ResultSet => A): Connection => Vector[A] = 
-      this :-/ transducers.map(f) ->: toVector
+    def transduce[A, S](t: Transducer[A, ResultSet])( f: Reducer[A, S]): Effect[S] = withStatement {
+      st => transducers.transduce(st.executeQuery, t, f): Context[S]
+    }
 
-    def :-/[A](f: Reducer[ResultSet, A]): Connection => Context[A] = query {
-      rs => rs :-/ f
+    def reduce[S](f: Reducer[ResultSet, S]): Effect[S] = withStatement {
+      st => transducers.reduce(st.executeQuery, f): Context[S]
     }
   }
 
@@ -99,22 +100,34 @@ trait Qeduce {
     }
   }
 
-  def withConnection[A](uri: String)( f: Connection => A): A =
-    usingConnection(DriverManager.getConnection(uri))(f)
+  trait Effect[A] {
+    def run(implicit c: Connection): A
 
-  def withConnection[A](ds: DataSource)( f: Connection => A): A =
-    usingConnection(ds.getConnection)(f)
+    def runWithUrl(uri: String) = consumeConnection(DriverManager.getConnection(uri))
+    def runwithSource(ds: DataSource) = consumeConnection(ds.getConnection)
+    def consumeConnection(c: Connection): A = {
+      try {
+        c setAutoCommit false
+        val a = run(c)
+        c.commit
+        a  
+      }
+      finally {
+        c.rollback
+        c.close
+      }
+    }
 
-  def usingConnection[A](c: Connection)( f: Connection => A): A = {
-    try {
-      c setAutoCommit false
-      val a = f(c)
-      c.commit
-      a  
-    }
-    finally {
-      c.rollback
-      c.close
-    }
-  } 
+    def flatMap[B](f: A => Effect[B]) = effect { implicit c => f(run).run }
+
+    def map[B](f: A => B) = effect { implicit c => f(run) }
+
+    def zip[B]( other: Effect[B]) = effect { implicit c => (run, other.run) }
+
+    def >>=[B](f: A => Effect[B]) = flatMap(f)
+  }
+
+  def effect[A](f: Connection => A): Effect[A] = new Effect[A] {
+    def run(implicit c: Connection): A = f(c)
+  }
 }
