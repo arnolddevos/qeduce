@@ -62,10 +62,10 @@ trait Effects { this: Qeduce =>
       }
     }
 
-    def flatMap[B](f: A => Effect[B]) = effect { implicit c => f(run).run }
-    def map[B](f: A => B) = effect { implicit c => f(run) }
-    def zip[B]( other: Effect[B]) = effect { implicit c => (run, other.run) }
-    def >>=[B](f: A => Effect[B]) = flatMap(f)
+    def flatMap[B](f: A => Effect[B]): Effect[B] = effect { implicit c => f(run).run }
+    def map[B](f: A => B): Effect[B] = effect { implicit c => f(run) }
+    def zip[B]( other: Effect[B]):Effect[(A, B)] = effect { implicit c => (run, other.run) }
+    def >>=[B](f: A => Effect[B]): Effect[B] = flatMap(f)
   }
 
   def effect[A](f: Connection => A): Effect[A] = new Effect[A] {
