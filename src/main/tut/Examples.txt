@@ -4,7 +4,7 @@ Assuming you have the qeduce library in your classpath:
 import qeduce._
 ```
 
-```tut
+```tut:silent
 val x = "fred"
 ```
 
@@ -20,6 +20,8 @@ Add some result handling:
 val e = s map {row => (row[Long]('ident), row[Option[Double]]('score)) }
 ```
 
+Here row is a ResultSet and the 
+
 Now run it:
 
 ```tut
@@ -27,15 +29,20 @@ Now run it:
 
 We can define terms, if they are frequently used:
 
-```tut:book
+```tut:silent
 val ident = term[Long]('ident)
 val score = term[Option[Double]]('score)
+```
 
+Now use terms instead of symbols, it is shorter:
+
+```tut:book
 val e = s map {row => (row(ident), row(score))}
 ```
 
-You can make the row implicit to cut down repetition, if desired:
+The row can be implicit to make this even shorter:
 
 ```tut:book
 val e = s map { implicit row => (ident(), score()) }
 ```
+
