@@ -17,7 +17,7 @@ val s = sql"select * from users where name = $x"
 Add some result handling:
 
 ```tut:book
-val e = s map {row => (row[Long]('ident), row get[Double] 'score) }
+val e = s map {row => (row[Long]('ident), row[Option[Double]]('score)) }
 ```
 
 Now run it:
@@ -27,9 +27,15 @@ Now run it:
 
 We can define terms, if they are frequently used:
 
-```tut
+```tut:book
 val ident = term[Long]('ident)
-val score = term[Double]('score)
+val score = term[Option[Double]]('score)
 
-val e = s map {row => (ident(row), score(row))}
+val e = s map {row => (row(ident), row(score))}
+```
+
+You can make the row implicit to cut down repetition, if desired:
+
+```tut:book
+val e = s map { implicit row => (ident(), score()) }
 ```
