@@ -68,7 +68,7 @@ trait Qeduce {
   trait SQLTerm[A] {
     def name: String
     def sqlType: SQLType[A]
-    def apply(rs: ResultSet): A = sqlType.extract(rs, name)
+    def apply()(implicit rs: ResultSet): A = sqlType.extract(rs, name)
     override def toString = "'" + name
   }
 
@@ -81,6 +81,6 @@ trait Qeduce {
 
   implicit class SQLRowView(rs: ResultSet) {
     def apply[A](c: Symbol)( implicit t: SQLType[A]): A = t.extract(rs, c.name)
-    def get[A](c: Symbol)( implicit t: SQLType[Option[A]]): Option[A] = t.extract(rs, c.name)
+    def apply[A](t: SQLTerm[A]): A = t.sqlType.extract(rs, t.name)
   }
 }
