@@ -2,8 +2,6 @@ package qeduce
 
 trait SQLTypes { this: Qeduce =>
   
-  import scala.language.implicitConversions
-
   implicit object sqlInt extends SQLType[Int] {
     def extract = _ getInt _
     def inject = _.setInt(_, _)

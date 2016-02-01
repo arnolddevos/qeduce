@@ -45,8 +45,7 @@ trait Qeduce {
     val params = Seq()
   }
 
-  trait SQLType[A] extends (((ResultSet, Symbol)) => A) {
-    final def apply(h: (ResultSet, Symbol)): A = extract(h._1, h._2.name)
+  trait SQLType[A] {
     def extract: (ResultSet, String) => A
     def inject: (PreparedStatement, Int, A) => Unit
     def display: A => String
