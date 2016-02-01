@@ -1,0 +1,12 @@
+Assuming you have the qeduce library in your classpath:
+
+```tut:silent
+import qeduce._
+```
+
+Now create some SQL like this:
+```tut
+val name = "fred"
+val q = sql"select * from users where name = $name"
+```
+
