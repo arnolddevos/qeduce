@@ -14,6 +14,7 @@ trait Constructions { this: Qeduce =>
   val order  = sql"order"
   val group  = sql"group"
   val by     = sql"by"
+  val in     = sql"in"
 
   def list(items: SQL*): SQL =
    if(items.nonEmpty) items.reduce( _ ~ sql"," ~ _)

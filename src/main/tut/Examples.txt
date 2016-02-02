@@ -1,31 +1,93 @@
-Assuming you have the qeduce library in your classpath:
+# Getting Started
+
+With qeduce, database interactions have three steps: 
+
+ 1. form an SQL query or statement
+ 2. transform results to the desired type
+ 3. execute against a connection, or connection pool
+
+Qeduce only requires the one import:
 
 ```tut:silent
 import qeduce._
 ```
 
+For these examples we are using a postgresql database containing the gnucash accounting schema.  The usual setup is needed.
+
 ```tut:silent
-val x = "fred"
+Class.forName("org.postgresql.Driver")
+import Credentials.{host, user, pass}
+val url = s"jdbc:postgresql://$host/gnucash?user=$user&password=$pass"
 ```
 
-Now create some SQL like this:
+_Step 1_: create some SQL. Note the use of a parameter.
 
 ```tut:book
-val s = sql"select * from users where name = $x"
+val param = "BANK"
+val query = sql"select * from accounts where account_type = $param"
 ```
 
-Add some result handling:
+_Step 2_: add a transformation for the results. 
 
 ```tut:book
-val e = s map {row => (row[Long]('ident), row[Option[Double]]('score)) }
+val effect = query map {row => row[String]('name) }
 ```
 
-Here row is a ResultSet and the 
+Here row is an SQLRowView which has an apply operator for selecting fields by their type and name.
 
-Now run it:
+The map operation produces something called an `Effect` which will yield the result given a database connection.  
+
+_Step 3_: execute. For this example we will provide the connection url defined previously.
+
+```tut:book
+val result = effect runWithUrl url
+```
+
+More details about each step follow.
+
+# Forming SQL Statements
+
+Statements have the type `SQL` and are produced by `sql" ... "` strings. (See scala string interpolation.) 
 
 ```tut
+sql"select name from accounts where account_type = ${param}"
 ```
+
+Each interpolated parameter becomes a parameter of a `java.sql.PreparedStatement` which prevents accidental SQL injection.  
+
+A typeclass, `SQLType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `SQLType` are provided for the common types and more can added.  They are easy to define.
+
+Statements can be assembled from pieces using the `~` operator.
+
+```tut
+val head = sql"select name from accounts"
+val pred = sql"where account_type = ${param}"
+head ~ pred
+```
+
+Taking this a step further, qeduce provides `val select = sql"select"` and similar definitions for the most common SQL keywords.  Using these and the `~` operator we can write:
+
+```tut
+select ~ sql"name" ~ from ~ sql"accounts" ~ where ~ sql"account_type = ${param}"
+```
+
+There are also implicit subclasses of SQL for symbols and values which allow this to further simplified:
+
+```tut
+select ~ 'name ~ from ~ 'accounts ~ where ~ 'account_type ~ sql"=" ~ param
+```
+
+In short, `~` concatenates literal SQL values, symbols, and any values for which there is an SQLType instance.
+
+This is not a true SQL embedded DSL. The aim is to allow statements to be composed dynamically while preventing accidental SQL injection.  
+
+Finally, methods `list()` and `nest()` are provided to make it easier to form comma-separated lists. 
+
+```tut
+select ~ list('guid, 'name) ~ from ~ 'accounts ~ where ~ 'account_type ~ in ~ nest("BANK", "EXPENSE")
+```
+
+# Result Transformation
 
 We can define terms, if they are frequently used:
 
@@ -37,12 +99,12 @@ val score = term[Option[Double]]('score)
 Now use terms instead of symbols, it is shorter:
 
 ```tut:book
-val e = s map {row => (row(ident), row(score))}
+val e = query map {row => (row(ident), row(score))}
 ```
 
 The row can be implicit to make this even shorter:
 
 ```tut:book
-val e = s map { implicit row => (ident(), score()) }
+val e = query map { implicit row => (ident(), score()) }
 ```
 
