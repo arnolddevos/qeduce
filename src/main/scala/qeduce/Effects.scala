@@ -1,6 +1,7 @@
 package qeduce 
 
 import java.sql.{Connection, DriverManager, SQLException, ResultSet, PreparedStatement}
+import java.util.Properties
 import javax.sql.DataSource
 import transducers.{Transducer, Reducer, Educible, Context}
 
@@ -48,8 +49,11 @@ trait Effects { this: Qeduce =>
   trait Effect[A] {
     def run(implicit c: Connection): A
 
-    def runWithUrl(uri: String) = consumeConnection(DriverManager.getConnection(uri))
-    def runwithSource(ds: DataSource) = consumeConnection(ds.getConnection)
+    def runWithUrl(url: String, props: Properties = new Properties ) = 
+      consumeConnection(DriverManager.getConnection(url, props))
+    def runwithSource(ds: DataSource) = 
+      consumeConnection(ds.getConnection)
+
     def consumeConnection(c: Connection): A = {
       try {
         c setAutoCommit false
