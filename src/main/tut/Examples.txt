@@ -35,7 +35,9 @@ val effect = query map {row => row[String]('name) }
 
 Here row, of type Row, has an apply operator for selecting fields by their type and name.
 
-The map operation produces something called an `Effect` which runs the query when given a database connection.  
+>>Note: `Row` is a wrapper around java.sql.ResultSet which is mutable.  A `Row` is only valid within the map function.
+
+The map operation produces something called an `Effect` which runs the query on a database connection.  
 
 _Step 3_: execute. Given an URL or a `java.sql.DataSource` the effect obtains a connection, runs the query, and cleans up. 
 
@@ -126,11 +128,11 @@ val txform = { implicit row: Row => (name(), scu()) }
 
 The aim is to convert a series of `Row`s into an application-specific data structure. For example:
 
-- A sequence of objects, one per row.  This is the obvious case, illustrated in the previous examples.
-- A a graph data structure.
+- A sequence of objects, one per row.  (This is the obvious case, illustrated in the previous examples.)
+- A graph data structure.
 - An updated copy of an existing data structure.
 - A fixed-space aggregate, summary or digest.
-- A (compound) effect such as a Task or Process.
+- An effect such as a Task or Process.
 - A search, which may produce an answer without traversing the entire query result. 
 
 In all but the first case there is no need to materialise the query result as a sequence. And it is often not important to define a class that models a result row.
@@ -141,16 +143,16 @@ All in all, a _fold_ is the appropriate concept here.  But this is a fold that c
 
 ## Transducers and Reducers
 
-Qeduce relies on a separate transducer library.  
+Qeduce relies on a separate transducer library.  To use transducers explicitly:
 
 ```tut:silent
 import transducers._
 ```
 
-Using transducers explicitly, the previous example is equivalent to the following:
+The previous example is equivalent to the following:
 
 ```tut:book
-val txduce = map(txform)
+val txduce = map { implicit row: Row => (name(), scu()) }
 val toResult = txduce(toVector)
 query reduce toResult runWithUrl url
 ```
