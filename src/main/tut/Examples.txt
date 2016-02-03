@@ -33,11 +33,11 @@ _Step 2_: add a transformation for the results.
 val effect = query map {row => row[String]('name) }
 ```
 
-Here row is an SQLRowView which has an apply operator for selecting fields by their type and name.
+Here row, of type Row, has an apply operator for selecting fields by their type and name.
 
 The map operation produces something called an `Effect` which runs the query when given a database connection.  
 
-_Step 3_: execute. For this example we will provide the connection url defined previously.
+_Step 3_: execute. Given an URL or a `java.sql.DataSource` the effect obtains a connection, runs the query, and cleans up. 
 
 ```tut:book
 val result = effect runWithUrl url
@@ -93,7 +93,7 @@ Symbols such as `'name` stand for SQL identifiers in statement construction and 
 
 ```tut:book
 val txform = { 
-  row: SQLRowView => 
+  row: Row => 
     (row[String]('name), row[Int]('commodity_scu))
 }
 query map txform
@@ -109,20 +109,20 @@ val scu = term[Int]('commodity_scu)
 A term can be used anywhere in place of a symbol. In a mapping function this is shorter because the type can be omitted:
 
 ```tut:book
-val txform = { row: SQLRowView => (row(name), row(scu)) }
+val txform = { row: Row => (row(name), row(scu)) }
 ```
 
 The row can be implicit to reduce repetition:
 
 ```tut:book
-val txform = { implicit row: SQLRowView => (name(), scu()) }
+val txform = { implicit row: Row => (name(), scu()) }
 ```
 
 # Result Transformation
 
 ## Rationale
 
-The aim is to convert a series of `SQLRowView`s into an application-specific data structure. For example:
+The aim is to convert a series of `Row`s into an application-specific data structure. For example:
 
 - A sequence of objects, one per row.  This is the obvious case, illustrated in the previous examples.
 - A a graph data structure.
@@ -143,7 +143,7 @@ Qeduce relies on a separate transducer library.  The previous example is equival
 
 ```tut:book
 import transducers._
-// val toResult = map[(String, Int), SQLRowView](txform)(toVector[(String, Int)])
+// val toResult = map[(String, Int), Row](txform)(toVector[(String, Int)])
 // query reduce toResult runWithUrl url
 ```
 

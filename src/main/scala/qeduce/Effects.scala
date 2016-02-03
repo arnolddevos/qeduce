@@ -23,22 +23,22 @@ trait Effects { this: Qeduce =>
 
     def update: Effect[Int] = withStatement(_.executeUpdate)
 
-    def map[A]( f: SQLRowView => A): Effect[Vector[A]] = {
+    def map[A]( f: Row => A): Effect[Vector[A]] = {
       transduce(transducers.map(f))(transducers.toVector)
     }
 
-    def transduce[A, S](t: Transducer[A, SQLRowView])( f: Reducer[A, S]): Effect[S] = withStatement {
+    def transduce[A, S](t: Transducer[A, Row])( f: Reducer[A, S]): Effect[S] = withStatement {
       st => transducers.transduce(st.executeQuery, t, f): Context[S]
     }
 
-    def reduce[S](f: Reducer[SQLRowView, S]): Effect[S] = withStatement {
+    def reduce[S](f: Reducer[Row, S]): Effect[S] = withStatement {
       st => transducers.reduce(st.executeQuery, f): Context[S]
     }
   }
 
-  implicit val resultSetIsEducible = new Educible[ResultSet, SQLRowView] {
-    def educe[S](rs: ResultSet, f: Reducer[SQLRowView, S]): S = {
-      val rv = new SQLRowView(rs)
+  implicit val resultSetIsEducible = new Educible[ResultSet, Row] {
+    def educe[S](rs: ResultSet, f: Reducer[Row, S]): S = {
+      val rv = new Row(rs)
       var s = f.init
       while(rs.next && ! f.isReduced(s)) 
         s = f(s, rv)
