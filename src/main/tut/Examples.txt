@@ -3,16 +3,16 @@
 With qeduce, database interactions have three steps: 
 
  1. form an SQL query or statement
- 2. transform results to the desired type
+ 2. transform results to a data structure or aggregate
  3. execute against a connection, or connection pool
 
-Qeduce only requires the one import:
+Everything needed is is the qeduce package:
 
 ```tut:silent
 import qeduce._
 ```
 
-For these examples we are using a postgresql database containing the gnucash accounting schema.  The usual setup is needed.
+These examples use a postgresql database containing the gnucash accounting schema.   Here is the setup:
 
 ```tut:silent
 Class.forName("org.postgresql.Driver")
@@ -35,7 +35,7 @@ val effect = query map {row => row[String]('name) }
 
 Here row is an SQLRowView which has an apply operator for selecting fields by their type and name.
 
-The map operation produces something called an `Effect` which will yield the result given a database connection.  
+The map operation produces something called an `Effect` which runs the query when given a database connection.  
 
 _Step 3_: execute. For this example we will provide the connection url defined previously.
 
@@ -49,17 +49,17 @@ More details about each step follow.
 
 Statements have the type `SQL` and are produced by `sql" ... "` strings. (See scala string interpolation.) 
 
-```tut
+```tut:book
 sql"select name from accounts where account_type = ${param}"
 ```
 
 Each interpolated parameter becomes a parameter of a `java.sql.PreparedStatement` which prevents accidental SQL injection.  
 
-A typeclass, `SQLType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `SQLType` are provided for the common types and more can added.  They are easy to define.
+A typeclass, `SQLType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `SQLType` are provided for the common types and more can added.
 
 Statements can be assembled from pieces using the `~` operator.
 
-```tut
+```tut:book
 val head = sql"select name from accounts"
 val pred = sql"where account_type = ${param}"
 head ~ pred
@@ -67,44 +67,85 @@ head ~ pred
 
 Taking this a step further, qeduce provides `val select = sql"select"` and similar definitions for the most common SQL keywords.  Using these and the `~` operator we can write:
 
-```tut
+```tut:book
 select ~ sql"name" ~ from ~ sql"accounts" ~ where ~ sql"account_type = ${param}"
 ```
 
 There are also implicit subclasses of SQL for symbols and values which allow this to further simplified:
 
-```tut
+```tut:book
 select ~ 'name ~ from ~ 'accounts ~ where ~ 'account_type ~ sql"=" ~ param
 ```
 
-In short, `~` concatenates literal SQL values, symbols, and any values for which there is an SQLType instance.
-
-This is not a true SQL embedded DSL. The aim is to allow statements to be composed dynamically while preventing accidental SQL injection.  
+In short, `~` concatenates SQL values, symbols, and values for which there is an SQLType instance.
 
 Finally, methods `list()` and `nest()` are provided to make it easier to form comma-separated lists. 
 
-```tut
-select ~ list('guid, 'name) ~ from ~ 'accounts ~ where ~ 'account_type ~ in ~ nest("BANK", "EXPENSE")
+```tut:book
+val query = select ~ list('name, 'commodity_scu) ~ from ~ 'accounts ~ where ~ 'account_type ~ in ~ nest("BANK", "EXPENSE")
+```
+
+This is not a true SQL embedded DSL. The aim is to allow statements to be composed dynamically while preventing accidental SQL injection. If the form of a statement is fixed, a simple sql" .... " string works well.
+
+# Terms
+
+Symbols such as `'name` stand for SQL identifiers in statement construction and result transformation. For example, here is a mapping function for the previous query:
+
+```tut:book
+val txform = { 
+  row: SQLRowView => 
+    (row[String]('name), row[Int]('commodity_scu))
+}
+query map txform
+```
+
+If a symbol is frequently used, a term can be defined which captures its type and name:
+
+```tut:book
+val name = term[String]('name)
+val scu = term[Int]('commodity_scu)
+```
+
+A term can be used anywhere in place of a symbol. In a mapping function this is shorter because the type can be omitted:
+
+```tut:book
+val txform = { row: SQLRowView => (row(name), row(scu)) }
+```
+
+The row can be implicit to reduce repetition:
+
+```tut:book
+val txform = { implicit row: SQLRowView => (name(), scu()) }
 ```
 
 # Result Transformation
 
-We can define terms, if they are frequently used:
+## Rationale
 
-```tut:silent
-val ident = term[Long]('ident)
-val score = term[Option[Double]]('score)
-```
+The aim is to convert a series of `SQLRowView`s into an application-specific data structure. For example:
 
-Now use terms instead of symbols, it is shorter:
+- A sequence of objects, one per row.  This is the obvious case, illustrated in the previous examples.
+- A a graph data structure.
+- An updated copy of an existing data structure.
+- A fixed-space aggregate, summary or digest.
+- A (compound) effect such as a Task or Process.
+- A search, which may produce an answer without traversing the entire query result. 
+
+In all but the first case there is no need to materialise the query result as a sequence. And it is often not important to define a class that models a result row.
+
+Another aim is to keep connection management and result set iteration out of the transformation code which can remain purely functional. 
+
+All in all, a _fold_ is the appropriate concept for result transformation.  But a fold that can exit early, which is sometimes called a _reducer_. Reducers are typically modified by _transducers_.
+
+## Transducers and Reducers
+
+Qeduce relies on a separate transducer library.  The previous example is equivalent to the following:
 
 ```tut:book
-val e = query map {row => (row(ident), row(score))}
+import transducers._
+// val toResult = map[(String, Int), SQLRowView](txform)(toVector[(String, Int)])
+// query reduce toResult runWithUrl url
 ```
 
-The row can be implicit to make this even shorter:
 
-```tut:book
-val e = query map { implicit row => (ident(), score()) }
-```
 
