@@ -156,3 +156,41 @@ val txduce = map { implicit row: Row => (name(), scu()) }
 val toResult = txduce(toVector)
 query reduce toResult runWithUrl url
 ```
+
+### Graph Example
+
+The following example uses a simplified graph data structure, defined as:
+
+```tut:silent
+type Pair=(String, String)
+type Pairs = Set[Pair]
+
+case class Graph(edges: Pairs = Set(), labels: Pairs = Set()) {
+  def label(p: Pair) = copy(labels=labels+p)  
+  def edge(p: Pair) = copy(edges=edges+p)
+  override def toString = s"Graph(${edges.size} edges, ${labels.size} labels)"
+}
+```
+
+Defining terms:
+
+```tut:silent
+val parent = term[Option[String]]('parent_guid)
+val name = term[String]('name)
+val guid = term[String]('guid)
+```
+
+A reducer that builds a `Graph` from rows.
+
+```tut
+val toResult = reducer(Graph()) { (graph: Graph, row: Row) => 
+   val stage = row(parent).fold(graph)(n => graph.edge(row(guid) -> n))
+   stage.label(row(guid) -> row(name))
+}
+```
+
+Finally, build and run the query:
+
+```tut
+select ~ list(guid, name, parent) ~ from ~ 'accounts reduce toResult runWithUrl url
+```
