@@ -57,7 +57,7 @@ Each interpolated parameter becomes a parameter of a `java.sql.PreparedStatement
 
 A typeclass, `SQLType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `SQLType` are provided for the common types and more can added.
 
-Statements can be assembled from pieces using the `~` operator.
+Statements can also be assembled from pieces using the `~` operator.
 
 ```tut:book
 val head = sql"select name from accounts"
@@ -84,6 +84,8 @@ Finally, methods `list()` and `nest()` are provided to make it easier to form co
 ```tut:book
 val query = select ~ list('name, 'commodity_scu) ~ from ~ 'accounts ~ where ~ 'account_type ~ in ~ nest("BANK", "EXPENSE")
 ```
+
+## Note
 
 This is not a true SQL embedded DSL. The aim is to allow statements to be composed dynamically while preventing accidental SQL injection. If the form of a statement is fixed, a simple sql" .... " string works well.
 
@@ -135,17 +137,20 @@ In all but the first case there is no need to materialise the query result as a 
 
 Another aim is to keep connection management and result set iteration out of the transformation code which can remain purely functional. 
 
-All in all, a _fold_ is the appropriate concept for result transformation.  But a fold that can exit early, which is sometimes called a _reducer_. Reducers are typically modified by _transducers_.
+All in all, a _fold_ is the appropriate concept here.  But this is a fold that can exit early, which is sometimes called a _reducer_. Reducers are typically combined with _transducers_.
 
 ## Transducers and Reducers
 
-Qeduce relies on a separate transducer library.  The previous example is equivalent to the following:
+Qeduce relies on a separate transducer library.  
 
-```tut:book
+```tut:silent
 import transducers._
-// val toResult = map[(String, Int), Row](txform)(toVector[(String, Int)])
-// query reduce toResult runWithUrl url
 ```
 
+Using transducers explicitly, the previous example is equivalent to the following:
 
-
+```tut:book
+val txduce = map(txform)
+val toResult = txduce(toVector)
+query reduce toResult runWithUrl url
+```
