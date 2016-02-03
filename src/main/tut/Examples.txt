@@ -184,8 +184,9 @@ A reducer that builds a `Graph` from rows.
 
 ```tut
 val toResult = reducer(Graph()) { (graph: Graph, row: Row) => 
-   val stage = row(parent).fold(graph)(n => graph.edge(row(guid) -> n))
-   stage.label(row(guid) -> row(name))
+    implicit def r = row
+    val stage = parent() map (n => graph edge guid() -> n) getOrElse graph
+    stage label guid() -> name()
 }
 ```
 
