@@ -5,7 +5,7 @@ import java.util.Properties
 import javax.sql.DataSource
 import transducers.{Transducer, Reducer, Educible, Context}
 
-trait Effects { this: Qeduce with HMaps =>
+trait Effects { this: Qeduce =>
 
   implicit class SQLOps( val sql: SQL ) {
     private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect { 
@@ -34,6 +34,13 @@ trait Effects { this: Qeduce with HMaps =>
     def reduce[S](f: Reducer[MutableRow, S]): Effect[S] = withStatement {
       st => transducers.reduce(st.executeQuery, f): Context[S]
     }
+  }
+
+  class MutableRow(rs: ResultSet) extends Row {
+    def get(t: SQLTerm): Option[t.Value] = 
+      try { Some(apply(t))} catch { case _:SQLException => None }
+    def apply(t: SQLTerm): t.Value = t.sqlType.extract(rs, t.name)
+    def apply[A](c: Symbol)( implicit t: SQLType[A]): A = t.extract(rs, c.name)
   }
 
   implicit val resultSetIsEducible = new Educible[ResultSet, MutableRow] {

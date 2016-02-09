@@ -19,8 +19,8 @@ object RuleExamples extends App {
   val Paid = term[Double]('Paid)
 
   val rules = List(
-    rulePf(Attention)  { case Patient(p) => p },
     rulePf(Attention)  { case Title(a) & Patient(p) => s"$a $p" },
+    rulePf(Attention)  { case Patient(p) => p },
     rulePf(BatchCount) { case Method("nogap") => 1 }, 
     rulePf(GST)        { case FeeExGST(f) => f * 0.1 }, 
     rulePf(GST)        { case Amount(a) => a / 11.0 }, 
@@ -39,10 +39,10 @@ object RuleExamples extends App {
     _.add(Patient)("Jim Jones"),
     _.add(Title)("Mr"),
     _.add(Amount)(110.00),
-    _.project(Patient, Title),
+    HMap(_, Patient, Title),
     _.add(FeeExGST)(20.00),
     _.add(Paid)(10.00),
-    _.project().add(Method)("nogap")
+    _ => HMap().add(Method)("nogap")
   )
 
   var h = HMap()

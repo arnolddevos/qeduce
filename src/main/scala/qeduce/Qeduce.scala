@@ -84,6 +84,5 @@ trait Qeduce {
   trait Row {
     def get(t: SQLTerm): Option[t.Value]
     def apply(t: SQLTerm): t.Value
-    def project(ts: SQLTerm*): Row
   }
 }

@@ -4,3 +4,4 @@ package object qeduce
   with Constructions
   with Effects
   with HMaps
+  with Rules
