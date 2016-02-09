@@ -40,7 +40,7 @@ trait Qeduce {
     val params = Seq()
   }
 
-  implicit class SQLofTerm(t: SQLTerm[_]) extends SQL {
+  implicit class SQLofTerm(t: SQLTerm) extends SQL {
     val parts = Seq("\""+t.name+"\"")
     val params = Seq()
   }
@@ -64,22 +64,24 @@ trait Qeduce {
     val sqlType = t
   }
 
-  trait SQLTerm[A] {
+  trait SQLTerm {
+    type Value
     def name: String
-    def sqlType: SQLType[A]
-    def apply()(implicit r: Row): A = r(this)
+    def sqlType: SQLType[Value]
+    def apply()(implicit r: Row): Value = r(this)
     override def toString = "'" + name
   }
 
-  def term[A](n: String)(implicit t: SQLType[A]): SQLTerm[A] = new SQLTerm[A] {
+  def term[A](n: String)(implicit t: SQLType[A]) = new SQLTerm {
+    type Value = A
     val name = n
     val sqlType = t
   }
 
-  def term[A](s: Symbol)(implicit t: SQLType[A]): SQLTerm[A] = term(s.name)
+  def term[A](s: Symbol)(implicit t: SQLType[A]): SQLTerm { type Value = A } = term(s.name)
 
-  class Row(rs: ResultSet) {
-    def apply[A](c: Symbol)( implicit t: SQLType[A]): A = t.extract(rs, c.name)
-    def apply[A](t: SQLTerm[A]): A = t.sqlType.extract(rs, t.name)
+  trait Row {
+    def apply(t: SQLTerm): t.Value
+    def project(ts: SQLTerm*): Row
   }
 }

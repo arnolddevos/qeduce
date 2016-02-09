@@ -93,15 +93,7 @@ This is not a true SQL embedded DSL. The aim is to allow statements to be compos
 
 # Terms
 
-Symbols such as `'name` stand for SQL identifiers in statement construction and result transformation. For example, here is a mapping function for the previous query:
-
-```tut:book
-val txform = { 
-  row: Row => 
-    (row[String]('name), row[Int]('commodity_scu))
-}
-query map txform
-```
+Symbols such as `'name` stand for SQL identifiers in statement construction as in `select ~ 'name ~ from ~ 'accounts` and result transformation as in `row[String]('name)`. 
 
 If a symbol is frequently used, a term can be defined which captures its type and name:
 

@@ -5,7 +5,7 @@ import java.util.Properties
 import javax.sql.DataSource
 import transducers.{Transducer, Reducer, Educible, Context}
 
-trait Effects { this: Qeduce =>
+trait Effects { this: Qeduce with HMaps =>
 
   implicit class SQLOps( val sql: SQL ) {
     private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect { 
@@ -23,22 +23,22 @@ trait Effects { this: Qeduce =>
 
     def update: Effect[Int] = withStatement(_.executeUpdate)
 
-    def map[A]( f: Row => A): Effect[Vector[A]] = {
+    def map[A]( f: MutableRow => A): Effect[Vector[A]] = {
       transduce(transducers.map(f))(transducers.toVector)
     }
 
-    def transduce[A, S](t: Transducer[A, Row])( f: Reducer[A, S]): Effect[S] = withStatement {
+    def transduce[A, S](t: Transducer[A, MutableRow])( f: Reducer[A, S]): Effect[S] = withStatement {
       st => transducers.transduce(st.executeQuery, t, f): Context[S]
     }
 
-    def reduce[S](f: Reducer[Row, S]): Effect[S] = withStatement {
+    def reduce[S](f: Reducer[MutableRow, S]): Effect[S] = withStatement {
       st => transducers.reduce(st.executeQuery, f): Context[S]
     }
   }
 
-  implicit val resultSetIsEducible = new Educible[ResultSet, Row] {
-    def educe[S](rs: ResultSet, f: Reducer[Row, S]): S = {
-      val rv = new Row(rs)
+  implicit val resultSetIsEducible = new Educible[ResultSet, MutableRow] {
+    def educe[S](rs: ResultSet, f: Reducer[MutableRow, S]): S = {
+      val rv = new MutableRow(rs)
       var s = f.init
       while(rs.next && ! f.isReduced(s)) 
         s = f(s, rv)

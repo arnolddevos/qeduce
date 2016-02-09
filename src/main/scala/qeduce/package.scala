@@ -3,3 +3,4 @@ package object qeduce
   with SQLTypes 
   with Constructions
   with Effects
+  with HMaps
