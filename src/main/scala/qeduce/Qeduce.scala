@@ -69,6 +69,7 @@ trait Qeduce {
     def name: String
     def sqlType: SQLType[Value]
     def apply()(implicit r: Row): Value = r(this)
+    def unapply( r: Row ): Option[Value] = r.get(this)
     override def toString = "'" + name
   }
 
@@ -81,6 +82,7 @@ trait Qeduce {
   def term[A](s: Symbol)(implicit t: SQLType[A]): SQLTerm { type Value = A } = term(s.name)
 
   trait Row {
+    def get(t: SQLTerm): Option[t.Value]
     def apply(t: SQLTerm): t.Value
     def project(ts: SQLTerm*): Row
   }
