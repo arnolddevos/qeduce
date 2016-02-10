@@ -114,6 +114,12 @@ The row can be implicit to reduce repetition:
 val txform = { implicit row: Row => (name(), scu()) }
 ```
 
+This is used as in:
+
+```tut:book
+query map txform runWithUrl url
+```
+
 # Result Transformation
 
 ## Rationale
@@ -186,4 +192,19 @@ Finally, build and run the query:
 
 ```tut
 select ~ list(guid, name, parent) ~ from ~ 'accounts reduce toResult runWithUrl url
+```
+
+# Errors
+
+What happens if the type I expect does not agree with the column in the `ResultSet`?
+
+```tut
+val wrong = term[Int]('name)
+query map { implicit row => wrong() } runWithUrl url
+```
+
+Or, using the `Row` `get` method:
+
+```tut
+query map { row => row get wrong } runWithUrl url
 ```
