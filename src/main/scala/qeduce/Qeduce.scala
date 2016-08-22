@@ -1,8 +1,9 @@
 package qeduce
 
 import java.sql.{ResultSet, PreparedStatement}
+import anodyne.HMaps
 
-trait Qeduce {
+trait Qeduce { this: HMaps =>
 
   trait SQL {
     def parts: Seq[String]
@@ -18,7 +19,7 @@ trait Qeduce {
         val params = d
       }
     }
-    
+
     override def toString =
       parts.zip(params).map { case (s, p) => s+p }.mkString + parts.last
   }
@@ -40,7 +41,7 @@ trait Qeduce {
     val params = Seq()
   }
 
-  implicit class SQLofTerm(t: SQLTerm) extends SQL {
+  implicit class SQLofTerm(t: Term) extends SQL {
     val parts = Seq("\""+t.name+"\"")
     val params = Seq()
   }
@@ -64,8 +65,7 @@ trait Qeduce {
     val sqlType = t
   }
 
-  trait SQLTerm {
-    type Value
+  abstract class Term extends TermSpec {
     def name: String
     def sqlType: SQLType[Value]
     def apply()(implicit r: Row): Value = r(this)
@@ -73,16 +73,12 @@ trait Qeduce {
     override def toString = "'" + name
   }
 
-  def term[A](n: String)(implicit t: SQLType[A]) = new SQLTerm {
+  def term[A](n: String)(implicit t: SQLType[A]) = new Term {
     type Value = A
     val name = n
     val sqlType = t
   }
 
-  def term[A](s: Symbol)(implicit t: SQLType[A]): SQLTerm { type Value = A } = term(s.name)
+  def term[A](s: Symbol)(implicit t: SQLType[A]): Term { type Value = A } = term(s.name)
 
-  trait Row {
-    def get(t: SQLTerm): Option[t.Value]
-    def apply(t: SQLTerm): t.Value
-  }
 }

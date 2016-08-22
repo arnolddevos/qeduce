@@ -21,9 +21,9 @@ object RuleExamples extends App {
   val rules = List(
     rulePf(Attention)  { case Title(a) & Patient(p) => s"$a $p" },
     rulePf(Attention)  { case Patient(p) => p },
-    rulePf(BatchCount) { case Method("nogap") => 1 }, 
-    rulePf(GST)        { case FeeExGST(f) => f * 0.1 }, 
-    rulePf(GST)        { case Amount(a) => a / 11.0 }, 
+    rulePf(BatchCount) { case Method("nogap") => 1 },
+    rulePf(GST)        { case FeeExGST(f) => f * 0.1 },
+    rulePf(GST)        { case Amount(a) => a / 11.0 },
     rulePf(Amount)     { case FeeExGST(f) & GST(g) => f+g },
     rulePf(FeeExGST)   { case Amount(a) & GST(g) => a-g },
     rulePf(OpeningBalance) { case Amount(a) => a },
@@ -52,10 +52,4 @@ object RuleExamples extends App {
     show(applyRules(h, rules))
   }
 
-}
-
-abstract class Term[A](implicit t: SQLType[A]) extends SQLTerm { this: Product => 
-  def name = productPrefix
-  type Value = A
-  val sqlType = t
 }

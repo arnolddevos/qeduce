@@ -1,14 +1,15 @@
-package qeduce 
+package qeduce
 
 import java.sql.{Connection, DriverManager, SQLException, ResultSet, PreparedStatement}
 import java.util.Properties
 import javax.sql.DataSource
 import transducers.{Transducer, Reducer, Educible, Context}
+import anodyne.HMaps
 
-trait Effects { this: Qeduce =>
+trait Effects { this: Qeduce with HMaps =>
 
   implicit class SQLOps( val sql: SQL ) {
-    private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect { 
+    private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect {
       c =>
         val st = c.prepareStatement(sql.parts.mkString("?"))
         try {
@@ -37,9 +38,9 @@ trait Effects { this: Qeduce =>
   }
 
   class MutableRow(rs: ResultSet) extends Row {
-    def get(t: SQLTerm): Option[t.Value] = 
+    def get(t: Term): Option[t.Value] =
       try { Some(apply(t))} catch { case _:SQLException => None }
-    def apply(t: SQLTerm): t.Value = t.sqlType.extract(rs, t.name)
+    def apply(t: Term): t.Value = t.sqlType.extract(rs, t.name)
     def apply[A](c: Symbol)( implicit t: SQLType[A]): A = t.extract(rs, c.name)
   }
 
@@ -47,7 +48,7 @@ trait Effects { this: Qeduce =>
     def educe[S](rs: ResultSet, f: Reducer[MutableRow, S]): S = {
       val rv = new MutableRow(rs)
       var s = f.init
-      while(rs.next && ! f.isReduced(s)) 
+      while(rs.next && ! f.isReduced(s))
         s = f(s, rv)
       f.complete(s)
     }
@@ -56,9 +57,9 @@ trait Effects { this: Qeduce =>
   trait Effect[A] {
     def run(implicit c: Connection): A
 
-    def runWithUrl(url: String, props: Properties = new Properties ) = 
+    def runWithUrl(url: String, props: Properties = new Properties ) =
       consumeConnection(DriverManager.getConnection(url, props))
-    def runwithSource(ds: DataSource) = 
+    def runwithSource(ds: DataSource) =
       consumeConnection(ds.getConnection)
 
     def consumeConnection(c: Connection): A = {
@@ -66,7 +67,7 @@ trait Effects { this: Qeduce =>
         c setAutoCommit false
         val a = run(c)
         c.commit
-        a  
+        a
       }
       finally {
         c.rollback
@@ -82,5 +83,5 @@ trait Effects { this: Qeduce =>
 
   def effect[A](f: Connection => A): Effect[A] = new Effect[A] {
     def run(implicit c: Connection): A = f(c)
-  }  
+  }
 }
