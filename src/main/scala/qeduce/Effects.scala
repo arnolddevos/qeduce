@@ -24,32 +24,24 @@ trait Effects { this: Qeduce with HMaps =>
 
     def update: Effect[Int] = withStatement(_.executeUpdate)
 
-    def map[A]( f: MutableRow => A): Effect[Vector[A]] = {
+    def map[A]( f: ResultSet => A): Effect[Vector[A]] = {
       transduce(transducers.map(f))(transducers.toVector)
     }
 
-    def transduce[A, S](t: Transducer[A, MutableRow])( f: Reducer[A, S]): Effect[S] = withStatement {
+    def transduce[A, S](t: Transducer[A, ResultSet])( f: Reducer[A, S]): Effect[S] = withStatement {
       st => transducers.transduce(st.executeQuery, t, f): Context[S]
     }
 
-    def reduce[S](f: Reducer[MutableRow, S]): Effect[S] = withStatement {
+    def reduce[S](f: Reducer[ResultSet, S]): Effect[S] = withStatement {
       st => transducers.reduce(st.executeQuery, f): Context[S]
     }
   }
 
-  class MutableRow(rs: ResultSet) extends Row {
-    def get(t: Term): Option[t.Value] =
-      try { Some(apply(t))} catch { case _:SQLException => None }
-    def apply(t: Term): t.Value = t.sqlType.extract(rs, t.name)
-    def apply[A](c: Symbol)( implicit t: SQLType[A]): A = t.extract(rs, c.name)
-  }
-
-  implicit val resultSetIsEducible = new Educible[ResultSet, MutableRow] {
-    def educe[S](rs: ResultSet, f: Reducer[MutableRow, S]): S = {
-      val rv = new MutableRow(rs)
+  implicit val resultSetIsEducible = new Educible[ResultSet, ResultSet] {
+    def educe[S](rs: ResultSet, f: Reducer[ResultSet, S]): S = {
       var s = f.init
       while(rs.next && ! f.isReduced(s))
-        s = f(s, rv)
+        s = f(s, rs)
       f.complete(s)
     }
   }

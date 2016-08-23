@@ -48,6 +48,7 @@ trait Qeduce { this: HMaps =>
 
   trait SQLType[A] {
     def extract: (ResultSet, String) => A
+    def tryExtract: (ResultSet, String) => Option[A]
     def inject: (PreparedStatement, Int, A) => Unit
     def display: A => String
   }
@@ -65,20 +66,27 @@ trait Qeduce { this: HMaps =>
     val sqlType = t
   }
 
+  implicit class RowOps(rs: ResultSet) {
+    def get(t: Term)(implicit e: SQLType[t.Value]): Option[t.Value] = e.tryExtract(rs, t.name)
+    def apply(t: Term)(implicit e: SQLType[t.Value]): t.Value = e.extract(rs, t.name)
+    def get[A](c: Symbol)( implicit e: SQLType[A]): Option[A] = e.tryExtract(rs, c.name)
+    def apply[A](c: Symbol)( implicit e: SQLType[A]): A = e.extract(rs, c.name)
+  }
+
   abstract class Term extends TermSpec {
     def name: String
-    def sqlType: SQLType[Value]
-    def apply()(implicit r: Row): Value = r(this)
-    def unapply( r: Row ): Option[Value] = r.get(this)
+    def apply()(implicit rs: ResultSet, e: SQLType[Value]): Value = e.extract(rs, name)
+    def unapply(rs: ResultSet)(implicit e: SQLType[Value]): Option[Value] = e.tryExtract(rs, name)
+    // def apply()(implicit h: HMap): Value = h(this)
+    def unapply(h: HMap): Option[Value] = h.get(this)
     override def toString = "'" + name
   }
 
-  def term[A](n: String)(implicit t: SQLType[A]) = new Term {
+  def term[A](n: String) = new Term {
     type Value = A
     val name = n
-    val sqlType = t
   }
 
-  def term[A](s: Symbol)(implicit t: SQLType[A]): Term { type Value = A } = term(s.name)
+  def term[A](s: Symbol): Term { type Value = A } = term(s.name)
 
 }
