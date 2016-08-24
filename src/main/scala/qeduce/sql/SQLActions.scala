@@ -7,10 +7,10 @@ import transducers.{Transducer, Reducer, Educible, Context}
 import anodyne.HMaps
 import qeduce.generic.Qeduce
 
-trait Effects { this: Qeduce with SQLTypes =>
+trait SQLActions { this: Qeduce with SQLTypes =>
 
   implicit class SQLOps( val sql: Query ) {
-    private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect {
+    private def withStatement[A](f: PreparedStatement => A): Action[A] = action {
       c =>
         val st = c.prepareStatement(sql.parts.mkString("?"))
         try {
@@ -23,17 +23,17 @@ trait Effects { this: Qeduce with SQLTypes =>
         }
     }
 
-    def update: Effect[Int] = withStatement(_.executeUpdate)
+    def update: Action[Int] = withStatement(_.executeUpdate)
 
-    def map[A]( f: ResultSet => A): Effect[Vector[A]] = {
+    def map[A]( f: ResultSet => A): Action[Vector[A]] = {
       transduce(transducers.map(f))(transducers.toVector)
     }
 
-    def transduce[A, S](t: Transducer[A, ResultSet])( f: Reducer[A, S]): Effect[S] = withStatement {
+    def transduce[A, S](t: Transducer[A, ResultSet])( f: Reducer[A, S]): Action[S] = withStatement {
       st => transducers.transduce(st.executeQuery, t, f): Context[S]
     }
 
-    def reduce[S](f: Reducer[ResultSet, S]): Effect[S] = withStatement {
+    def reduce[S](f: Reducer[ResultSet, S]): Action[S] = withStatement {
       st => transducers.reduce(st.executeQuery, f): Context[S]
     }
   }
@@ -47,7 +47,7 @@ trait Effects { this: Qeduce with SQLTypes =>
     }
   }
 
-  trait Effect[A] {
+  trait Action[A] {
     def run(implicit c: Connection): A
 
     def runWithUrl(url: String, props: Properties = new Properties ) =
@@ -68,13 +68,13 @@ trait Effects { this: Qeduce with SQLTypes =>
       }
     }
 
-    def flatMap[B](f: A => Effect[B]): Effect[B] = effect { implicit c => f(run).run }
-    def map[B](f: A => B): Effect[B] = effect { implicit c => f(run) }
-    def zip[B]( other: Effect[B]):Effect[(A, B)] = effect { implicit c => (run, other.run) }
-    def >>=[B](f: A => Effect[B]): Effect[B] = flatMap(f)
+    def flatMap[B](f: A => Action[B]): Action[B] = action { implicit c => f(run).run }
+    def map[B](f: A => B): Action[B] = action { implicit c => f(run) }
+    def zip[B]( other: Action[B]):Action[(A, B)] = action { implicit c => (run, other.run) }
+    def >>=[B](f: A => Action[B]): Action[B] = flatMap(f)
   }
 
-  def effect[A](f: Connection => A): Effect[A] = new Effect[A] {
+  def action[A](f: Connection => A): Action[A] = new Action[A] {
     def run(implicit c: Connection): A = f(c)
   }
 }

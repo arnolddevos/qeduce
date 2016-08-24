@@ -37,7 +37,7 @@ Here row, of type Row, has an apply operator for selecting fields by their type 
 
 >>Note: `Row` is a wrapper around java.sql.ResultSet which is mutable.  A `Row` is only valid within the map function.
 
-The map operation produces something called an `Effect` which runs the query on a database connection.
+The map operation produces something called an `Action` which runs the query on a database connection.
 
 _Step 3_: execute. Given an URL or a `java.sql.DataSource` the effect obtains a connection, runs the query, and cleans up.
 

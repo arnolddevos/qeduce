@@ -5,8 +5,7 @@ import qeduce.sql._
 package object qeduce
   extends Qeduce
   with SQLTypes
+  with SQLActions
   with Constructions
-  with Effects
   with HMaps
   with Rules
-  
