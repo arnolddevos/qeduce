@@ -9,7 +9,7 @@ import qeduce.generic.Qeduce
 
 trait Effects { this: Qeduce with SQLTypes =>
 
-  implicit class SQLOps( val sql: SQL ) {
+  implicit class SQLOps( val sql: Query ) {
     private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect {
       c =>
         val st = c.prepareStatement(sql.parts.mkString("?"))

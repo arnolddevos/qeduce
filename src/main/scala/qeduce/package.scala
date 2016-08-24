@@ -9,3 +9,4 @@ package object qeduce
   with Effects
   with HMaps
   with Rules
+  

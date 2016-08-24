@@ -57,7 +57,7 @@ sql"select name from accounts where account_type = ${param}"
 
 Each interpolated parameter becomes a parameter of a `java.sql.PreparedStatement` which prevents accidental SQL injection.
 
-A typeclass, `SQLType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `SQLType` are provided for the common types and more can added.
+A typeclass, `QueryType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `QueryType` are provided for the common types and more can added.
 
 Statements can also be assembled from pieces using the `~` operator.
 
@@ -79,7 +79,7 @@ There are also implicit subclasses of SQL for symbols and values which allow thi
 select ~ 'name ~ from ~ 'accounts ~ where ~ 'account_type ~ sql"=" ~ param
 ```
 
-In short, `~` concatenates SQL values, symbols, and values for which there is an SQLType instance.
+In short, `~` concatenates SQL values, symbols, and values for which there is an QueryType instance.
 
 Finally, methods `list()` and `nest()` are provided to make it easier to form comma-separated lists.
 
