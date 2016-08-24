@@ -8,13 +8,6 @@ trait SQLTypes { this: Qeduce =>
   type Statement = PreparedStatement
   type Row = ResultSet
 
-  implicit class SQLContext( sc: StringContext) {
-    def sql( ps: QueryValue* ): Query = new Query {
-      val parts = sc.parts
-      val params = ps
-    }
-  }
-
   abstract class SQLType[A] extends QueryType[A] {
     def tryExtract =
       (rs, n) =>

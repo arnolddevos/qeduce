@@ -9,6 +9,13 @@ import qeduce.generic.Qeduce
 
 trait SQLActions { this: Qeduce with SQLTypes =>
 
+  implicit class SQLContext( sc: StringContext) {
+    def sql( ps: QueryValue* ): Query = new Query {
+      val parts = sc.parts
+      val params = ps
+    }
+  }
+
   implicit class SQLOps( val sql: Query ) {
     private def withStatement[A](f: PreparedStatement => A): Action[A] = action {
       c =>
