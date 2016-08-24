@@ -1,9 +1,11 @@
-package qeduce
+package qeduce.generic
 
-import java.sql.{ResultSet, PreparedStatement}
 import anodyne.HMaps
 
 trait Qeduce { this: HMaps =>
+
+  type Statement
+  type Row
 
   trait SQL {
     def parts: Seq[String]
@@ -47,9 +49,9 @@ trait Qeduce { this: HMaps =>
   }
 
   trait SQLType[A] {
-    def extract: (ResultSet, String) => A
-    def tryExtract: (ResultSet, String) => Option[A]
-    def inject: (PreparedStatement, Int, A) => Unit
+    def extract: (Row, String) => A
+    def tryExtract: (Row, String) => Option[A]
+    def inject: (Statement, Int, A) => Unit
     def display: A => String
   }
 
@@ -66,7 +68,7 @@ trait Qeduce { this: HMaps =>
     val sqlType = t
   }
 
-  implicit class RowOps(rs: ResultSet) {
+  implicit class RowOps(rs: Row) {
     def get(t: Term)(implicit e: SQLType[t.Value]): Option[t.Value] = e.tryExtract(rs, t.name)
     def apply(t: Term)(implicit e: SQLType[t.Value]): t.Value = e.extract(rs, t.name)
     def get[A](c: Symbol)( implicit e: SQLType[A]): Option[A] = e.tryExtract(rs, c.name)
@@ -75,8 +77,8 @@ trait Qeduce { this: HMaps =>
 
   abstract class Term extends TermSpec {
     def name: String
-    def apply()(implicit rs: ResultSet, e: SQLType[Value]): Value = e.extract(rs, name)
-    def unapply(rs: ResultSet)(implicit e: SQLType[Value]): Option[Value] = e.tryExtract(rs, name)
+    def apply()(implicit rs: Row, e: SQLType[Value]): Value = e.extract(rs, name)
+    def unapply(rs: Row)(implicit e: SQLType[Value]): Option[Value] = e.tryExtract(rs, name)
     // def apply()(implicit h: HMap): Value = h(this)
     def unapply(h: HMap): Option[Value] = h.get(this)
     override def toString = "'" + name

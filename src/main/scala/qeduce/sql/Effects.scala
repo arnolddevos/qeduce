@@ -1,12 +1,13 @@
-package qeduce
+package qeduce.sql
 
 import java.sql.{Connection, DriverManager, SQLException, ResultSet, PreparedStatement}
 import java.util.Properties
 import javax.sql.DataSource
 import transducers.{Transducer, Reducer, Educible, Context}
 import anodyne.HMaps
+import qeduce.generic.Qeduce
 
-trait Effects { this: Qeduce with HMaps =>
+trait Effects { this: Qeduce with SQLTypes =>
 
   implicit class SQLOps( val sql: SQL ) {
     private def withStatement[A](f: PreparedStatement => A): Effect[A] = effect {

@@ -10,7 +10,6 @@ Everything needed is is the qeduce package:
 
 ```tut:silent
 import qeduce._
-type Row = java.sql.ResultSet
 ```
 
 These examples use a postgresql database containing the gnucash accounting schema.   Here is the setup:

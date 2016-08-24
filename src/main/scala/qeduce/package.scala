@@ -1,10 +1,6 @@
 import anodyne.{HMaps, Rules}
-
-trait HMapRules extends Rules with HMaps {
-  type Corpus = HMap
-  def addResult(h: HMap, t: Term)(v: t.Value) = h.add(t)(v)
-  def removeResult(h: HMap, t: Term) = h.remove(t)
-}
+import qeduce.generic._
+import qeduce.sql._
 
 package object qeduce
   extends Qeduce
@@ -12,4 +8,4 @@ package object qeduce
   with Constructions
   with Effects
   with HMaps
-  with HMapRules
+  with Rules

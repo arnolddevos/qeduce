@@ -1,7 +1,7 @@
-package qeduce
+package qeduce.generic
 
 trait Constructions { this: Qeduce =>
-  
+
   val select = sql"select"
   val insert = sql"insert"
   val update = sql"update"

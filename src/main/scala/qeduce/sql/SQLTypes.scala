@@ -1,8 +1,12 @@
-package qeduce
+package qeduce.sql
 
-import java.sql.SQLException
+import java.sql.{SQLException, PreparedStatement, ResultSet}
+import qeduce.generic.Qeduce
 
 trait SQLTypes { this: Qeduce =>
+
+  type Statement = PreparedStatement
+  type Row = ResultSet
 
   abstract class SQLBaseType[A] extends SQLType[A] {
     def tryExtract =
