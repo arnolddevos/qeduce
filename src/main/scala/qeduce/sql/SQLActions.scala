@@ -30,7 +30,7 @@ trait SQLActions { this: Qeduce with SQLTypes =>
         }
     }
 
-    def update: Action[Int] = withStatement(_.executeUpdate)
+    def execute(): Action[Int] = withStatement(_.executeUpdate)
 
     def map[A]( f: ResultSet => A): Action[Vector[A]] = {
       transduce(transducers.map(f))(transducers.toVector)
