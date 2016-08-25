@@ -6,13 +6,13 @@ With qeduce, database interactions have three steps:
  2. transform results to a data structure or aggregate
  3. execute against a connection, or connection pool
 
-Everything needed is is the qeduce package:
+Everything needed is is the following package:
 
 ```tut:silent
-import qeduce._
+import qeduce.sql.api._
 ```
 
-These examples use a postgresql database containing the gnucash accounting schema.   Here is the setup:
+There is also a `qeduce.cql.api` for the Cassandra database. However, hese examples use a postgresql database containing the gnucash accounting schema.   Here is the setup:
 
 ```tut:silent
 Class.forName("org.postgresql.Driver")
@@ -81,7 +81,7 @@ select ~ 'name ~ from ~ 'accounts ~ where ~ 'account_type ~ sql"=" ~ param
 
 In short, `~` concatenates SQL values, symbols, and values for which there is an QueryType instance.
 
-Finally, methods `list()` and `nest()` are provided to make it easier to form comma-separated lists.
+Finally, methods `list()` and `nest()` are provided to make it easier to form comma-separated lists. The `list()` form creates a bare list while the `nest()` form creates a list enclosed in brackets.
 
 ```tut:book
 val query = select ~ list('name, 'commodity_scu) ~ from ~ 'accounts ~ where ~ 'account_type ~ in ~ nest("BANK", "EXPENSE")
@@ -181,7 +181,7 @@ val guid = term[String]('guid)
 A reducer that builds a `Graph` from rows.
 
 ```tut
-val toResult = reducer(Graph()) { (graph: Graph, row: Row) =>
+val toGraph = reducer(Graph()) { (graph: Graph, row: Row) =>
     implicit def r = row
     val stage = parent() map (n => graph edge guid() -> n) getOrElse graph
     stage label guid() -> name()
@@ -191,7 +191,7 @@ val toResult = reducer(Graph()) { (graph: Graph, row: Row) =>
 Finally, build and run the query:
 
 ```tut
-select ~ list(guid, name, parent) ~ from ~ 'accounts reduce toResult runWithUrl url
+select ~ list(guid, name, parent) ~ from ~ 'accounts reduce toGraph runWithUrl url
 ```
 
 # Errors

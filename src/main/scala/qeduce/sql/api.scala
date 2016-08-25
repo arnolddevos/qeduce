@@ -1,8 +1,9 @@
+package qeduce.sql
+
 import anodyne.{HMaps, Rules}
 import qeduce.generic._
-import qeduce.sql._
 
-package object qeduce
+object api
   extends Qeduce
   with SQLTypes
   with SQLActions
