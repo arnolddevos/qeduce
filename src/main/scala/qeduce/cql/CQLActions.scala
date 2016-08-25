@@ -14,7 +14,7 @@ trait CQLActions { this: Qeduce with CQLTypes =>
 
   implicit class CQLOps( val q: Query ) {
 
-    def execute(): Action[Int] = reduce(count)
+    def update(): Action[Int] = action(q)
 
     def map[A]( f: Row => A): Action[Vector[A]] =
       transduce(transducers.map(f))(transducers.toVector)
@@ -22,33 +22,32 @@ trait CQLActions { this: Qeduce with CQLTypes =>
     def transduce[A, S](t: Transducer[A, Row])( f: Reducer[A, S]): Action[S] =
       reduce(t(f))
 
-    def reduce[S](f: Reducer[Row, S]): Action[S] = action {
-      session =>
-        val statement = session.prepare(q.parts.mkString("?")).bind()
+    def reduce[S](f: Reducer[Row, S]): Action[S] = action(q, f)
+  }
 
-        for((p, i) <- q.params.zipWithIndex)
-          p.sqlType.inject(statement, i, p.value)
+  def action(q: Query): Action[Int] = action(q, count)
 
-        val result = session.execute(statement)
+  def action[S](q: Query, f: Reducer[Row, S]): Action[S] = action {
+    session =>
+      val statement = session.prepare(q.parts.mkString("?")).bind()
 
-        var s = f.init
-        while(! f.isReduced(s) && ! result.isExhausted)
-          s = f(s, result.one())
-        f.complete(s)
-    }
+      for((p, i) <- q.params.zipWithIndex)
+        p.sqlType.inject(statement, i, p.value)
+
+      val result = session.execute(statement)
+
+      var s = f.init
+      while(! f.isReduced(s) && ! result.isExhausted)
+        s = f(s, result.one())
+      f.complete(s)
+  }
+
+  def consumeConnection[A](a: Action[A]): Action[A] = action {
+    c => try { a.run(c) } finally { c.close }
   }
 
   trait Action[A] {
     def run(implicit c: Session): A
-
-    def consumeConnection(c: Session): A = {
-      try {
-        run(c)
-      }
-      finally {
-        c.close
-      }
-    }
 
     def flatMap[B](f: A => Action[B]): Action[B] = action { implicit c => f(run).run }
     def map[B](f: A => B): Action[B] = action { implicit c => f(run) }
