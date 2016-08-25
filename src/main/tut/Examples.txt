@@ -30,7 +30,7 @@ val query = sql"select * from accounts where account_type = $param"
 _Step 2_: add a transformation for the results.
 
 ```tut:book
-val effect = query map {row => row[String]('name) }
+val action = query map {row => row[String]('name) }
 ```
 
 Here row, of type Row, has an apply operator for selecting fields by their type and name.
@@ -39,10 +39,10 @@ Here row, of type Row, has an apply operator for selecting fields by their type 
 
 The map operation produces something called an `Action` which runs the query on a database connection.
 
-_Step 3_: execute. Given an URL or a `java.sql.DataSource` the effect obtains a connection, runs the query, and cleans up.
+_Step 3_: execute. Given an URL or a `java.sql.DataSource` the action obtains a connection, runs the query, and cleans up.
 
 ```tut:book
-val result = effect runWithUrl url
+val result = action runWithUrl url
 ```
 
 More details about each step follow.

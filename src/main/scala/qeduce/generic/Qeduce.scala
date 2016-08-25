@@ -1,9 +1,11 @@
 package qeduce.generic
 
 import anodyne.HMaps
+import transducers.{Transducer, Reducer, map => mapOp, toVector}
 
 trait Qeduce { this: HMaps =>
 
+  type Session
   type Statement
   type Row
 
@@ -22,8 +24,12 @@ trait Qeduce { this: HMaps =>
       }
     }
 
-    override def toString =
-      parts.zip(params).map { case (s, p) => s+p }.mkString + parts.last
+    def update(): Action[Int] = action(this)
+    def reduce[S](f: Reducer[Row, S]): Action[S] = action(this, f)
+    def map[A]( f: Row => A): Action[Vector[A]] = transduce(mapOp(f))(toVector)
+    def transduce[A, S](t: Transducer[A, Row])( f: Reducer[A, S]): Action[S] = reduce(t(f))
+
+    override def toString = parts.zip(params).map { case (s, p) => s+p }.mkString + parts.last
   }
 
   trait QueryValue {
@@ -91,4 +97,17 @@ trait Qeduce { this: HMaps =>
 
   def term[A](s: Symbol): Term { type Value = A } = term(s.name)
 
+  trait Action[A] {
+    def run(implicit s: Session): A
+    def flatMap[B](f: A => Action[B]): Action[B] = action { implicit s => f(run).run }
+    def map[B](f: A => B): Action[B] = action { implicit s => f(run) }
+    def zip[B]( other: Action[B]):Action[(A, B)] = action { implicit s => (run, other.run) }
+    def >>=[B](f: A => Action[B]): Action[B] = flatMap(f)
+  }
+
+  def action[A](f: Session => A): Action[A] = new Action[A] {
+    def run(implicit s: Session): A = f(s)
+  }
+  def action(q: Query): Action[Int]
+  def action[S](q: Query, f: Reducer[Row, S]): Action[S]
 }

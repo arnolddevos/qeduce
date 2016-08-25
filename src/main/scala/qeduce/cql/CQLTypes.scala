@@ -12,7 +12,8 @@ trait CQLTypes { this: Qeduce =>
   abstract class CQLType[A] extends QueryType[A] {
     def tryExtract =
       (rs, n) =>
-        try { Some(extract(rs, n))} catch { case _:IllegalArgumentException => None }
+        try { Some(extract(rs, n)) }
+        catch { case _:IllegalArgumentException => None }
   }
 
   implicit object cqlInt extends CQLType[Int] {
@@ -45,20 +46,21 @@ trait CQLTypes { this: Qeduce =>
     def display = "\"" + _ + "\""
   }
 
-  implicit def cqlNullable[A]( implicit u: QueryType[A]): QueryType[Option[A]] = new CQLType[Option[A]] {
-    def extract = {
-      (rs, name) =>
-        if(rs.isNull(name)) None
-        else Some(u.extract(rs, name))
+  implicit def cqlNullable[A]( implicit u: QueryType[A]): QueryType[Option[A]] =
+    new CQLType[Option[A]] {
+      def extract = {
+        (rs, name) =>
+          if(rs.isNull(name)) None
+          else Some(u.extract(rs, name))
+      }
+      def inject = {
+        (st, ix, as) =>
+          if(as.isDefined) u.inject(st, ix, as.get)
+          else st.setToNull(ix)
+      }
+      def display =
+        as =>
+          if(as.isDefined) "Some(" + u.display(as.get) + ")"
+          else "None"
     }
-    def inject = {
-      (st, ix, as) =>
-        if(as.isDefined) u.inject(st, ix, as.get)
-        else st.setToNull(ix)
-    }
-    def display =
-      as =>
-        if(as.isDefined) "Some(" + u.display(as.get) + ")"
-        else "None"
-  }
 }

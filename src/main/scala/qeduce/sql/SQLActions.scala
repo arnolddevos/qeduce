@@ -1,10 +1,8 @@
 package qeduce.sql
 
-import java.sql.{Connection, DriverManager, SQLException, ResultSet, PreparedStatement}
+import java.sql.{DriverManager, PreparedStatement}
 import java.util.Properties
-import javax.sql.DataSource
-import transducers.{Transducer, Reducer, Educible, Context}
-import anodyne.HMaps
+import transducers.Reducer
 import qeduce.generic.Qeduce
 
 trait SQLActions { this: Qeduce with SQLTypes =>
@@ -16,56 +14,35 @@ trait SQLActions { this: Qeduce with SQLTypes =>
     }
   }
 
-  implicit class SQLOps( val sql: Query ) {
-    private def withStatement[A](f: PreparedStatement => A): Action[A] = action {
-      c =>
-        val st = c.prepareStatement(sql.parts.mkString("?"))
-        try {
-          for((p, i) <- sql.params.zipWithIndex)
-            p.sqlType.inject(st, i+1, p.value)
-          f(st)
-        }
-        finally {
-          st.close
-        }
-    }
-
-    def update(): Action[Int] = withStatement(_.executeUpdate)
-
-    def map[A]( f: ResultSet => A): Action[Vector[A]] = {
-      transduce(transducers.map(f))(transducers.toVector)
-    }
-
-    def transduce[A, S](t: Transducer[A, ResultSet])( f: Reducer[A, S]): Action[S] = withStatement {
-      st => transducers.transduce(st.executeQuery, t, f): Context[S]
-    }
-
-    def reduce[S](f: Reducer[ResultSet, S]): Action[S] = withStatement {
-      st => transducers.reduce(st.executeQuery, f): Context[S]
-    }
+  private def withStatement[A](q: Query)(f: PreparedStatement => A): Action[A] = action {
+    c =>
+      val st = c.prepareStatement(q.parts.mkString("?"))
+      try {
+        for((p, i) <- q.params.zipWithIndex)
+          p.sqlType.inject(st, i+1, p.value)
+        f(st)
+      }
+      finally {
+        st.close
+      }
   }
 
-  implicit val resultSetIsEducible = new Educible[ResultSet, ResultSet] {
-    def educe[S](rs: ResultSet, f: Reducer[ResultSet, S]): S = {
+  def action(q: Query): Action[Int] = withStatement(q)(_.executeUpdate)
+
+  def action[S](q: Query, f: Reducer[Row, S]): Action[S] = withStatement(q) {
+    st =>
+      val rs = st.executeQuery
       var s = f.init
-      while(rs.next && ! f.isReduced(s))
+      while(! f.isReduced(s) && rs.next)
         s = f(s, rs)
       f.complete(s)
-    }
   }
 
-  trait Action[A] {
-    def run(implicit c: Connection): A
-
-    def runWithUrl(url: String, props: Properties = new Properties ) =
-      consumeConnection(DriverManager.getConnection(url, props))
-    def runwithSource(ds: DataSource) =
-      consumeConnection(ds.getConnection)
-
-    def consumeConnection(c: Connection): A = {
+  def consumeConnection[A](aa: Action[A]): Action[A] = action {
+    c =>
       try {
         c setAutoCommit false
-        val a = run(c)
+        val a = aa.run(c)
         c.commit
         a
       }
@@ -73,15 +50,10 @@ trait SQLActions { this: Qeduce with SQLTypes =>
         c.rollback
         c.close
       }
-    }
-
-    def flatMap[B](f: A => Action[B]): Action[B] = action { implicit c => f(run).run }
-    def map[B](f: A => B): Action[B] = action { implicit c => f(run) }
-    def zip[B]( other: Action[B]):Action[(A, B)] = action { implicit c => (run, other.run) }
-    def >>=[B](f: A => Action[B]): Action[B] = flatMap(f)
   }
 
-  def action[A](f: Connection => A): Action[A] = new Action[A] {
-    def run(implicit c: Connection): A = f(c)
+  implicit class ActionOps[A](aa: Action[A]) {
+    def runWithUrl(url: String, props: Properties = new Properties ): A =
+      consumeConnection(aa).run(DriverManager.getConnection(url, props))
   }
 }
