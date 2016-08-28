@@ -1,7 +1,5 @@
-package qeduce.sql
-
+package qeduce
 import java.sql
-import qeduce.generic.Qeduce
 
 trait SQLTypes { this: Qeduce =>
 
@@ -46,7 +44,7 @@ trait SQLTypes { this: Qeduce =>
     def display = "\"" + _ + "\""
   }
 
-  implicit def sqlNullable[A]( implicit u: QueryType[A]): QueryType[Option[A]] = 
+  implicit def sqlNullable[A]( implicit u: QueryType[A]): QueryType[Option[A]] =
     new SQLType[Option[A]] {
       def extract = {
         (rs, name) =>

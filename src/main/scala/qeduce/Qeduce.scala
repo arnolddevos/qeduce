@@ -1,4 +1,4 @@
-package qeduce.generic
+package qeduce
 
 import anodyne.HMaps
 import transducers.{Transducer, Reducer, map => mapOp, toVector}

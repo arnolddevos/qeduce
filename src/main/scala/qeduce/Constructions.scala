@@ -1,4 +1,4 @@
-package qeduce.generic
+package qeduce
 
 trait Constructions { this: Qeduce =>
 

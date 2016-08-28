@@ -1,7 +1,6 @@
-package qeduce.sql
+package qeduce
 
 import anodyne.{HMaps, Rules}
-import qeduce.generic._
 
 object api
   extends Qeduce

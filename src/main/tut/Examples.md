@@ -9,7 +9,7 @@ With qeduce, database interactions have three steps:
 Everything needed is is the following package:
 
 ```tut:silent
-import qeduce.sql.api._
+import qeduce.api._
 ```
 
 There is also a `qeduce.cql.api` for the Cassandra database. However, hese examples use a postgresql database containing the gnucash accounting schema.   Here is the setup:

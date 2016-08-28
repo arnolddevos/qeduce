@@ -1,7 +1,7 @@
-package qeduce.cql
+package qeduce
+package cql
 
 import com.datastax.driver.core
-import qeduce.generic.Qeduce
 import scala.collection.mutable.{Map => MutMap}
 
 trait CQLTypes { this: Qeduce =>

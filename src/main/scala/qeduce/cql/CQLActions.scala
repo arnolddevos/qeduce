@@ -1,6 +1,6 @@
-package qeduce.cql
+package qeduce
+package cql
 
-import qeduce.generic.Qeduce
 import transducers.{Reducer, count}
 
 trait CQLActions { this: Qeduce with CQLTypes =>
