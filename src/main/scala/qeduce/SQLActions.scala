@@ -13,6 +13,15 @@ trait SQLActions { this: Qeduce with SQLTypes =>
     }
   }
 
+  type Context[+A] = A
+
+  def action[A](f: Session => A): Action[A] = new Action[A] {
+    def run(implicit s: Session): A = f(s)
+    def flatMap[B](f: A => Action[B]): Action[B] = action { implicit s => f(run).run }
+    def map[B](f: A => B): Action[B] = action { implicit s => f(run) }
+    def zip[B]( other: Action[B]):Action[(A, B)] = action { implicit s => (run, other.run) }
+  }
+
   private def withStatement[A](q: Query)(f: PreparedStatement => A): Action[A] = action {
     c =>
       val st = c.prepareStatement(q.parts.mkString("?"))

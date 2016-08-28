@@ -96,17 +96,17 @@ trait Qeduce {
 
   def term[A](s: Symbol): Term { type Value = A } = term(s.name)
 
+  type Context[+A]
+
   trait Action[A] {
-    def run(implicit s: Session): A
-    def flatMap[B](f: A => Action[B]): Action[B] = action { implicit s => f(run).run }
-    def map[B](f: A => B): Action[B] = action { implicit s => f(run) }
-    def zip[B]( other: Action[B]):Action[(A, B)] = action { implicit s => (run, other.run) }
+    def run(implicit s: Session): Context[A]
+    def flatMap[B](f: A => Action[B]): Action[B]
+    def map[B](f: A => B): Action[B]
+    def zip[B]( other: Action[B]):Action[(A, B)]
     def >>=[B](f: A => Action[B]): Action[B] = flatMap(f)
+    def >>[B](b: Action[B]): Action[B] = flatMap(_ => b)
   }
 
-  def action[A](f: Session => A): Action[A] = new Action[A] {
-    def run(implicit s: Session): A = f(s)
-  }
   def action(q: Query): Action[Int]
   def action[S](q: Query, f: Reducer[Row, S]): Action[S]
 }
