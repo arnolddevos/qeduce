@@ -1,9 +1,9 @@
 package qeduce
 
-import anodyne.HMaps
 import transducers.{Transducer, Reducer, map => mapOp, toVector}
+import scala.language.higherKinds
 
-trait Qeduce { this: HMaps =>
+trait Qeduce {
 
   type Session
   type Statement
@@ -75,18 +75,17 @@ trait Qeduce { this: HMaps =>
   }
 
   implicit class RowOps(rs: Row) {
-    def get(t: Term)(implicit e: QueryType[t.Value]): Option[t.Value] = e.tryExtract(rs, t.name)
-    def apply(t: Term)(implicit e: QueryType[t.Value]): t.Value = e.extract(rs, t.name)
     def get[A](c: Symbol)( implicit e: QueryType[A]): Option[A] = e.tryExtract(rs, c.name)
     def apply[A](c: Symbol)( implicit e: QueryType[A]): A = e.extract(rs, c.name)
+    def get(t: Term)(implicit e: QueryType[t.Value]): Option[t.Value] = e.tryExtract(rs, t.name)
+    def apply(t: Term)(implicit e: QueryType[t.Value]): t.Value = e.extract(rs, t.name)
   }
 
-  abstract class Term extends TermSpec {
+  abstract class Term {
+    type Value
     def name: String
     def apply()(implicit rs: Row, e: QueryType[Value]): Value = e.extract(rs, name)
     def unapply(rs: Row)(implicit e: QueryType[Value]): Option[Value] = e.tryExtract(rs, name)
-    // def apply()(implicit h: HMap): Value = h(this)
-    def unapply(h: HMap): Option[Value] = h.get(this)
     override def toString = "'" + name
   }
 
