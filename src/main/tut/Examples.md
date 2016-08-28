@@ -1,18 +1,18 @@
 # Getting Started
 
-With qeduce, database interactions have three steps: 
+With qeduce, database interactions have three steps:
 
  1. form an SQL query or statement
  2. transform results to a data structure or aggregate
  3. execute against a connection, or connection pool
 
-Everything needed is is the qeduce package:
+Everything needed is is the following package:
 
 ```tut:silent
-import qeduce._
+import qeduce.api._
 ```
 
-These examples use a postgresql database containing the gnucash accounting schema.   Here is the setup:
+There is also a `qeduce.cql.api` for the Cassandra database. However, hese examples use a postgresql database containing the gnucash accounting schema.   Here is the setup:
 
 ```tut:silent
 Class.forName("org.postgresql.Driver")
@@ -27,37 +27,37 @@ val param = "BANK"
 val query = sql"select * from accounts where account_type = $param"
 ```
 
-_Step 2_: add a transformation for the results. 
+_Step 2_: add a transformation for the results.
 
 ```tut:book
-val effect = query map {row => row[String]('name) }
+val action = query map {row => row[String]('name) }
 ```
 
 Here row, of type Row, has an apply operator for selecting fields by their type and name.
 
 >>Note: `Row` is a wrapper around java.sql.ResultSet which is mutable.  A `Row` is only valid within the map function.
 
-The map operation produces something called an `Effect` which runs the query on a database connection.  
+The map operation produces something called an `Action` which runs the query on a database connection.
 
-_Step 3_: execute. Given an URL or a `java.sql.DataSource` the effect obtains a connection, runs the query, and cleans up. 
+_Step 3_: execute. Given an URL or a `java.sql.DataSource` the action obtains a connection, runs the query, and cleans up.
 
 ```tut:book
-val result = effect runWithUrl url
+val result = action runWithUrl url
 ```
 
 More details about each step follow.
 
 # Forming SQL Statements
 
-Statements have the type `SQL` and are produced by `sql" ... "` strings. (See scala string interpolation.) 
+Statements have the type `SQL` and are produced by `sql" ... "` strings. (See scala string interpolation.)
 
 ```tut:book
 sql"select name from accounts where account_type = ${param}"
 ```
 
-Each interpolated parameter becomes a parameter of a `java.sql.PreparedStatement` which prevents accidental SQL injection.  
+Each interpolated parameter becomes a parameter of a `java.sql.PreparedStatement` which prevents accidental SQL injection.
 
-A typeclass, `SQLType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `SQLType` are provided for the common types and more can added.
+A typeclass, `QueryType[A]` specifies the conversion of scala types, `A`, to SQL types. Instances of `QueryType` are provided for the common types and more can added.
 
 Statements can also be assembled from pieces using the `~` operator.
 
@@ -79,9 +79,9 @@ There are also implicit subclasses of SQL for symbols and values which allow thi
 select ~ 'name ~ from ~ 'accounts ~ where ~ 'account_type ~ sql"=" ~ param
 ```
 
-In short, `~` concatenates SQL values, symbols, and values for which there is an SQLType instance.
+In short, `~` concatenates SQL values, symbols, and values for which there is an QueryType instance.
 
-Finally, methods `list()` and `nest()` are provided to make it easier to form comma-separated lists. 
+Finally, methods `list()` and `nest()` are provided to make it easier to form comma-separated lists. The `list()` form creates a bare list while the `nest()` form creates a list enclosed in brackets.
 
 ```tut:book
 val query = select ~ list('name, 'commodity_scu) ~ from ~ 'accounts ~ where ~ 'account_type ~ in ~ nest("BANK", "EXPENSE")
@@ -93,7 +93,7 @@ This is not a true SQL embedded DSL. The aim is to allow statements to be compos
 
 # Terms
 
-Symbols such as `'name` stand for SQL identifiers in statement construction as in `select ~ 'name ~ from ~ 'accounts` and result transformation as in `row[String]('name)`. 
+Symbols such as `'name` stand for SQL identifiers in statement construction as in `select ~ 'name ~ from ~ 'accounts` and result transformation as in `row[String]('name)`.
 
 If a symbol is frequently used, a term can be defined which captures its type and name:
 
@@ -131,11 +131,11 @@ The aim is to convert a series of `Row`s into an application-specific data struc
 - An updated copy of an existing data structure.
 - A fixed-space aggregate, summary or digest.
 - An effect such as a Task or Process.
-- A search, which may produce an answer without traversing the entire query result. 
+- A search, which may produce an answer without traversing the entire query result.
 
 In all but the first case there is no need to materialise the query result as a sequence. And it is often not important to define a class that models a result row.
 
-Another aim is to keep connection management and result set iteration out of the transformation code which can remain purely functional. 
+Another aim is to keep connection management and result set iteration out of the transformation code which can remain purely functional.
 
 All in all, a _fold_ is the appropriate concept here.  But this is a fold that can exit early, which is sometimes called a _reducer_. Reducers are typically combined with _transducers_.
 
@@ -164,7 +164,7 @@ type Pair=(String, String)
 type Pairs = Set[Pair]
 
 case class Graph(edges: Pairs = Set(), labels: Pairs = Set()) {
-  def label(p: Pair) = copy(labels=labels+p)  
+  def label(p: Pair) = copy(labels=labels+p)
   def edge(p: Pair) = copy(edges=edges+p)
   override def toString = s"Graph(${edges.size} edges, ${labels.size} labels)"
 }
@@ -181,7 +181,7 @@ val guid = term[String]('guid)
 A reducer that builds a `Graph` from rows.
 
 ```tut
-val toResult = reducer(Graph()) { (graph: Graph, row: Row) => 
+val toGraph = reducer(Graph()) { (graph: Graph, row: Row) =>
     implicit def r = row
     val stage = parent() map (n => graph edge guid() -> n) getOrElse graph
     stage label guid() -> name()
@@ -191,20 +191,20 @@ val toResult = reducer(Graph()) { (graph: Graph, row: Row) =>
 Finally, build and run the query:
 
 ```tut
-select ~ list(guid, name, parent) ~ from ~ 'accounts reduce toResult runWithUrl url
+select ~ list(guid, name, parent) ~ from ~ 'accounts reduce toGraph runWithUrl url
 ```
 
 # Errors
 
 What happens if the type I expect does not agree with the column in the `ResultSet`?
 
-```tut
+```tut:nofail
 val wrong = term[Int]('name)
 query map { implicit row => wrong() } runWithUrl url
 ```
 
 Or, using the `Row` `get` method:
 
-```tut
+```tut:nofail
 query map { row => row get wrong } runWithUrl url
 ```
