@@ -120,6 +120,15 @@ This is used as in:
 query map txform runWithUrl url
 ```
 
+## Matching
+
+More complex cases can use matching or partial functions involving terms:
+
+```tut:book
+object & { def unapply[T](t: T) = Some((t, t)) }
+val txform: Row => (String, Int) = { case name(n) & scu(s) => (n, s) }
+```
+
 # Result Transformation
 
 ## Rationale

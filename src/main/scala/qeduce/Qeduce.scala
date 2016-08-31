@@ -39,9 +39,7 @@ trait Qeduce {
     override def toString = "${"+sqlType.display(value)+"}"
   }
 
-  trait QueryType[A] {
-    def extract: (Row, String) => A
-    def tryExtract: (Row, String) => Option[A]
+  trait QueryType[A] extends TermExtract[Row, A] {
     def inject: (Statement, Int, A) => Unit
     def display: A => String
   }
@@ -81,12 +79,17 @@ trait Qeduce {
     def apply(t: Term)(implicit e: QueryType[t.Value]): t.Value = e.extract(rs, t.name)
   }
 
+  trait TermExtract[R, A] {
+    def extract: (R, String) => A
+    def tryExtract: (R, String) => Option[A]
+  }
+
   abstract class Term {
     type Value
     def name: String
-    def apply()(implicit rs: Row, e: QueryType[Value]): Value = e.extract(rs, name)
-    def unapply(rs: Row)(implicit e: QueryType[Value]): Option[Value] = e.tryExtract(rs, name)
-    override def toString = "'" + name
+    def apply()(implicit r: Row, e: TermExtract[Row, Value]): Value = e.extract(r, name)
+    def unapply[R](r: R)(implicit e: TermExtract[R, Value]): Option[Value] = e.tryExtract(r, name)
+    override def toString = s"Term($name)"
   }
 
   def term[A](n: String) = new Term {
