@@ -1,6 +1,6 @@
 package qeduce
 
-import transducers.{Transducer, Reducer, map => mapOp, toVector}
+import transducers.api.{Transducer, Reducer, map => mapOp, toVector}
 import scala.language.higherKinds
 
 trait Qeduce {

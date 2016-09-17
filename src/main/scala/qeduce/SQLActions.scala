@@ -2,7 +2,7 @@ package qeduce
 
 import java.sql.{DriverManager, PreparedStatement}
 import java.util.Properties
-import transducers.Reducer
+import transducers.api.Reducer
 
 trait SQLActions { this: Qeduce with SQLTypes =>
 

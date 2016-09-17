@@ -153,7 +153,7 @@ All in all, a _fold_ is the appropriate concept here.  But this is a fold that c
 Qeduce relies on a separate transducer library.  To use transducers explicitly:
 
 ```tut:silent
-import transducers._
+import transducers.api._
 ```
 
 The previous example is equivalent to the following:
