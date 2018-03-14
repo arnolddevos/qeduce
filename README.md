@@ -7,7 +7,4 @@ Qeduce offers safe and parsimonious:
 - SQL construction.
 - Result extraction and transformation. 
 
-Best of all, you can understand Qeduce: the source is short.
-
-
-
+Best of all, you can understand Qeduce: the source is short.  Have a look at Examples.md (a tut file).
