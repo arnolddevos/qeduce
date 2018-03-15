@@ -2,7 +2,9 @@ name := "qeduce"
 
 organization := "com.bgsig"
 
-tutSettings
+enablePlugins(TutPlugin)
 
-enablePlugins(DottedGitVersioning)
+enablePlugins(GitVersioning)
 
+
+git.useGitDescribe := true
